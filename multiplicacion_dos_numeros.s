@@ -1,64 +1,40 @@
-.global _start
-
-.section .data
-    prompt1: .asciz "Introduce el primer numero: "
-    prompt2: .asciz "Introduce el segundo numero: "
-    result_msg: .asciz "El resultado de la multiplicacion es: %d\n"
-
-.section .bss
-    num1: .skip 4
-    num2: .skip 4
-
+.global main
 .section .text
-_start:
-    // Imprimir primer mensaje (introducir primer número)
-    mov x0, 1                  // Descriptores de archivo: 1 para stdout
-    ldr x1, =prompt1            // Dirección del primer mensaje
-    bl printf
 
-    // Leer primer número desde entrada estándar
-    mov x0, 0                  // Descriptores de archivo: 0 para stdin
-    ldr x1, =num1               // Dirección donde almacenar el número
-    mov x2, 4                   // Tamaño del número (4 bytes)
-    bl read_input
+main:
+    # Reservar espacio en la pila para almacenar dos enteros
+    sub sp, sp, 16               // Reservar 16 bytes en la pila
 
-    // Imprimir segundo mensaje (introducir segundo número)
-    mov x0, 1                  // Descriptores de archivo: 1 para stdout
-    ldr x1, =prompt2            // Dirección del segundo mensaje
-    bl printf
+    # Leer el primer número
+    ldr x0, =input_msg            // Cargar la dirección del mensaje de entrada
+    bl printf                     // Llamar a printf para mostrar el mensaje
+    ldr x0, =format               // Cargar la dirección del formato para scanf
+    mov x1, sp                    // Pasar la dirección del primer entero en la pila
+    bl scanf                      // Llamar a scanf para leer el número
 
-    // Leer segundo número desde entrada estándar
-    mov x0, 0                  // Descriptores de archivo: 0 para stdin
-    ldr x1, =num2               // Dirección donde almacenar el número
-    mov x2, 4                   // Tamaño del número (4 bytes)
-    bl read_input
+    # Leer el segundo número
+    ldr x0, =input_msg            // Cargar la dirección del mensaje de entrada
+    bl printf                     // Mostrar mensaje para el segundo número
+    ldr x0, =format               // Cargar el formato para scanf
+    add x1, sp, 8                 // Pasar la dirección del segundo entero en la pila
+    bl scanf                      // Llamar a scanf para leer el segundo número
 
-    // Cargar los valores de los números en los registros w1 y w2 (32 bits)
-    ldr w1, [num1]               // Cargar primer número en w1 (32-bit)
-    ldr w2, [num2]               // Cargar segundo número en w2 (32-bit)
+    # Realizar la multiplicación
+    ldr w0, [sp]                  // Cargar el primer número en w0
+    ldr w1, [sp, 8]               // Cargar el segundo número en w1
+    mul w2, w0, w1                // Multiplicar w0 y w1, almacenar el resultado en w2
 
-    // Multiplicar los dos números (32-bit)
-    mul w0, w1, w2               // Multiplicar w1 y w2, almacenar en w0 (32-bit)
+    # Imprimir el resultado
+    ldr x0, =result_msg           // Cargar la dirección del mensaje de resultado
+    mov x1, x2                    // Pasar el resultado a x1 para printf
+    bl printf                     // Llamar a printf para mostrar el resultado
 
-    // Imprimir el resultado
-    mov x0, 1                   // Descriptores de archivo: 1 para stdout
-    ldr x1, =result_msg         // Dirección del mensaje de resultado
-    mov x2, w0                  // El resultado de la multiplicación (32-bit)
-    bl printf
-
-    // Salir del programa
-    mov x0, 0                   // Código de salida
-    mov x8, 93                  // Syscall número para exit
-    svc 0
-
-// Función para leer entrada
-read_input:
-    mov x8, 63                  // Syscall para leer
-    svc 0
+    # Limpiar y finalizar
+    add sp, sp, 16                // Restaurar el stack pointer
+    mov x0, 0                     // Indicar salida exitosa
     ret
 
-// Función para imprimir texto
-printf:
-    mov x8, 64                  // Syscall para printf
-    svc 0
-    ret
+.section .rodata
+input_msg: .asciz "Ingrese un número: "
+format: .asciz "%d"
+result_msg: .asciz "El resultado de la multiplicación es: %d\n"
